@@ -19,3 +19,16 @@ export const createUniformBuffer = (device: GPUDevice, size: number): GPUBuffer 
 
   return buffer;
 }
+
+export const createIndexBuffer = (device: GPUDevice, data: Uint32Array): GPUBuffer => {
+  const buffer = device.createBuffer({
+    size: data.byteLength,
+    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    mappedAtCreation: true,
+  });
+
+  new Uint32Array(buffer.getMappedRange()).set(data);
+  buffer.unmap();
+
+  return buffer;
+}

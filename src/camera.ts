@@ -108,7 +108,7 @@ const updateMovement = (delta: DOMHighResTimeStamp): void => {
   vec3.normalize(front, front);
 
   position.x += velocity[0];
-  position.y += velocity[1];
+  position.y = 0;
   position.z += velocity[2];
 
   velocity[0] *= 0.93;

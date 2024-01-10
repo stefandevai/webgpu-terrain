@@ -2,17 +2,20 @@ import { mat4, vec3 } from 'wgpu-matrix';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
-import { createVertexBuffer, createUniformBuffer } from './buffer';
+import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
 import {
   cubeVertexArray,
+  cubeIndexArray,
   cubeVertexSize,
   cubePositionOffset,
+  cubeNormalOffset,
   cubeUVOffset,
-  cubeVertexCount
+  cubeIndexCount
 } from './data/meshes/cube';
 
 interface RenderData {
   vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
   uniformBuffer: GPUBuffer;
   uniformBindGroup: GPUBindGroup;
   renderPassDescriptor: GPURenderPassDescriptor;
@@ -42,6 +45,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   });
 
   const vertexBuffer = createVertexBuffer(device, cubeVertexArray);
+  const indexBuffer = createIndexBuffer(device, cubeIndexArray);
 
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
@@ -57,10 +61,15 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
             {
               shaderLocation: 0,
               offset: cubePositionOffset,
-              format: 'float32x4',
+              format: 'float32x3',
             },
             {
               shaderLocation: 1,
+              offset: cubeNormalOffset,
+              format: 'float32x3',
+            },
+            {
+              shaderLocation: 2,
               offset: cubeUVOffset,
               format: 'float32x2',
             },
@@ -140,6 +149,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
 
   renderData = {
     vertexBuffer,
+    indexBuffer,
     uniformBuffer,
     uniformBindGroup,
     renderPassDescriptor,
@@ -165,8 +175,9 @@ const render = (tranformationMatrix: mat4): void => {
   const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
   passEncoder.setPipeline(renderData.pipeline);
   passEncoder.setVertexBuffer(0, renderData.vertexBuffer);
+  passEncoder.setIndexBuffer(renderData.indexBuffer, 'uint32');
   passEncoder.setBindGroup(0, renderData.uniformBindGroup);
-  passEncoder.draw(cubeVertexCount, 9, 0, 0);
+  passEncoder.drawIndexed(cubeIndexCount, 9, 0, 0);
   passEncoder.end();
 
   device.queue.submit([commandEncoder.finish()]);

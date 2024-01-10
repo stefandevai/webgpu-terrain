@@ -5,17 +5,19 @@ struct Uniforms {
 
 struct VertexOutput {
   @builtin(position) Position : vec4<f32>,
-  @location(0) fragUV : vec2<f32>,
+  @location(0) fragNormal : vec3<f32>,
+  @location(1) fragUV : vec2<f32>,
 }
 
 @vertex
 fn main(
   @builtin(instance_index) instanceIndex : u32,
-  @location(0) position : vec4<f32>,
-  @location(1) uv : vec2<f32>
+  @location(0) position : vec3<f32>,
+  @location(1) normal : vec3<f32>,
+  @location(2) uv : vec2<f32>
 ) -> VertexOutput {
   var output: VertexOutput;
-  var world_position: vec4<f32> = position;
+  var world_position: vec4<f32> = vec4<f32>(position, 1.0);
 
   switch instanceIndex {
     case 0u: {
@@ -53,6 +55,7 @@ fn main(
 
   output.Position = uniforms.modelViewProjectionMatrix * world_position;
 
+  output.fragNormal = normal;
   output.fragUV = uv;
   return output;
 }
