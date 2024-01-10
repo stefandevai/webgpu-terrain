@@ -1,5 +1,5 @@
-import { mat4, vec3 } from 'wgpu-matrix';
 import renderer from './renderer';
+import camera from './camera';
 import './style.css';
 
 const run = async () => {
@@ -9,37 +9,27 @@ const run = async () => {
   }
 
   const canvas = document.querySelector('canvas');
-  const devicePixelRatio = window.devicePixelRatio;
-  const width = canvas.clientWidth * devicePixelRatio;
-  const height = canvas.clientHeight * devicePixelRatio;
-  canvas.width = width;
-  canvas.height = height;
-
+  camera.init(canvas);
   await renderer.init(canvas);
 
-  const aspect = canvas.width / canvas.height;
+  let lastTime: DOMHighResTimeStamp | null = null;
 
-  const projectionMatrix = mat4.perspective(
-    Math.PI / 4,
-    aspect,
-    1,
-    100,
-  );
+  const frame = (currentTime?: DOMHighResTimeStamp) => {
+    // currentTime is undefined on the first frame
+    if (!currentTime) {
+      requestAnimationFrame(frame);
+      return;
+    }
 
-  const modelViewProjectionMatrix = mat4.create();
+    if (lastTime == null) {
+      lastTime = currentTime;
+    }
 
-  const getTransformationMatrix = () => {
-    const now = Date.now() / 1000;
-    const viewMatrix = mat4.identity();
-    mat4.translate(viewMatrix, vec3.fromValues(0, 0, -20), viewMatrix);
-    mat4.rotate(viewMatrix, vec3.fromValues(Math.sin(now), Math.cos(now), 0), 1, viewMatrix);
-    mat4.multiply(projectionMatrix, viewMatrix, modelViewProjectionMatrix);
-
-    return modelViewProjectionMatrix as Float32Array;
-  }
-
-  const frame = () => {
-    renderer.render(getTransformationMatrix());
+    const delta = (currentTime - lastTime) / 1000.0;
+    lastTime = currentTime;
+    
+    camera.update(delta);
+    renderer.render(camera.getTransformationMatrix());
     requestAnimationFrame(frame);
   };
 

@@ -15,41 +15,43 @@ fn main(
   @location(1) uv : vec2<f32>
 ) -> VertexOutput {
   var output: VertexOutput;
-  output.Position = uniforms.modelViewProjectionMatrix * position;
+  var world_position: vec4<f32> = position;
 
   switch instanceIndex {
     case 0u: {
-      output.Position.x += 10.0;
+      world_position.x += 10.0;
     }
     case 1u: {
-      output.Position.x -= 10.0;
+      world_position.x -= 10.0;
     }
     case 2u: {
-      output.Position.y += 10.0;
+      world_position.y += 10.0;
     }
     case 3u: {
-      output.Position.y -= 10.0;
+      world_position.y -= 10.0;
     }
     case 4u: {
-      output.Position.x -= 10.0;
-      output.Position.y += 10.0;
+      world_position.x -= 10.0;
+      world_position.y += 10.0;
     }
     case 5u: {
-      output.Position.x += 10.0;
-      output.Position.y -= 10.0;
+      world_position.x += 10.0;
+      world_position.y -= 10.0;
     }
     case 6u: {
-      output.Position.x += 10.0;
-      output.Position.y += 10.0;
+      world_position.x += 10.0;
+      world_position.y += 10.0;
     }
     case 7u: {
-      output.Position.x -= 10.0;
-      output.Position.y -= 10.0;
+      world_position.x -= 10.0;
+      world_position.y -= 10.0;
     }
     default: {
       break;
     }
   }
+
+  output.Position = uniforms.modelViewProjectionMatrix * world_position;
 
   output.fragUV = uv;
   return output;

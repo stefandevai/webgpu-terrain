@@ -23,7 +23,7 @@ let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
 
-const init = async (canvas: HTMLCanvasElement): void => {
+const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   const adapter = await navigator.gpu.requestAdapter();
   device = await adapter.requestDevice();
 
