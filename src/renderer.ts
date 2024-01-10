@@ -2,6 +2,7 @@ import { mat4, vec3 } from 'wgpu-matrix';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
+import { createVertexBuffer, createUniformBuffer } from './buffer';
 import {
   cubeVertexArray,
   cubeVertexSize,
@@ -40,14 +41,7 @@ const init = async (canvas: HTMLCanvasElement): void => {
     alphaMode: 'premultiplied',
   });
 
-  const vertexBuffer = device.createBuffer({
-    size: cubeVertexArray.byteLength,
-    usage: GPUBufferUsage.VERTEX,
-    mappedAtCreation: true,
-  });
-
-  new Float32Array(vertexBuffer.getMappedRange()).set(cubeVertexArray);
-  vertexBuffer.unmap();
+  const vertexBuffer = createVertexBuffer(device, cubeVertexArray);
 
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
@@ -105,10 +99,7 @@ const init = async (canvas: HTMLCanvasElement): void => {
     minFilter: 'linear',
   });
 
-  const uniformBuffer = device.createBuffer({
-    size: 4 * 16,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
+  const uniformBuffer = createUniformBuffer(device, 4 * 16);
 
   const uniformBindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
