@@ -1,4 +1,5 @@
-import { mat4, vec3 } from 'wgpu-matrix';
+import { mat4, vec3, vec4 } from 'wgpu-matrix';
+import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
@@ -25,6 +26,12 @@ interface RenderData {
 let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
+
+const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
+const lightPosition = vec3.fromValues(-5.0, -10.0, 15.0);
+
+const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragmentShaderSource);
+const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
 
 const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   const adapter = await navigator.gpu.requestAdapter();
@@ -108,7 +115,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     minFilter: 'linear',
   });
 
-  const uniformBuffer = createUniformBuffer(device, 4 * 16);
+  const uniformBuffer = createUniformBuffer(device, uniformValues.arrayBuffer.byteLength);
 
   const uniformBindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
@@ -162,14 +169,15 @@ const render = (tranformationMatrix: mat4): void => {
     return;
   }
 
-  device.queue.writeBuffer(
-    renderData.uniformBuffer,
-    0,
-    tranformationMatrix.buffer,
-    tranformationMatrix.byteOffset,
-    tranformationMatrix.byteLength
-  );
   renderData.renderPassDescriptor.colorAttachments[0].view = context.getCurrentTexture().createView();
+
+  uniformValues.set({
+    mvp: tranformationMatrix,
+    light_position: lightPosition,
+    light_color: lightColor,
+  });
+
+  device.queue.writeBuffer(renderData.uniformBuffer, 0, uniformValues.arrayBuffer);
 
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
@@ -177,7 +185,7 @@ const render = (tranformationMatrix: mat4): void => {
   passEncoder.setVertexBuffer(0, renderData.vertexBuffer);
   passEncoder.setIndexBuffer(renderData.indexBuffer, 'uint32');
   passEncoder.setBindGroup(0, renderData.uniformBindGroup);
-  passEncoder.drawIndexed(cubeIndexCount, 9, 0, 0);
+  passEncoder.drawIndexed(cubeIndexCount, 1, 0, 0);
   passEncoder.end();
 
   device.queue.submit([commandEncoder.finish()]);

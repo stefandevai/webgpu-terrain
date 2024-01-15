@@ -1,10 +1,15 @@
 import { mat4, vec3, utils } from 'wgpu-matrix';
 import { Position } from './types';
 
-const position: Position = { x: 0, y: 0, z: 40 };
+const position: Position = { x: 0, y: 0, z: 10 };
 const velocity = vec3.fromValues(0, 0, 0);
-const yMovement = vec3.fromValues(0, 0, 0);
-const movementDirection: Position = { x: 0, y: 0, z: 0 };
+const moving = {
+  left: false,
+  right: false,
+  forward: false,
+  backward: false,
+};
+
 const speed = 30;
 const modelViewProjectionMatrix = mat4.create();
 const projection = mat4.create();
@@ -16,19 +21,27 @@ const sensitivity = 0.1;
 let yaw = -90;
 let pitch = 0;
 
-const handleKeyDown = (e: KeyboardEvent): void => {
-  switch (e.key) {
-    case 'w':
-      movementDirection.z += 1;
+const handleKeyDown = (e: KeyboardEvent, value: bool): void => {
+  switch (e.code) {
+    case 'KeyW':
+      moving.forward = value;
+      e.preventDefault();
+      e.stopPropagation();
       break;
-    case 's':
-      movementDirection.z -= 1;
+    case 'KeyS':
+      moving.backward = value;
+      e.preventDefault();
+      e.stopPropagation();
       break;
-    case 'a':
-      movementDirection.x -= 1;
+    case 'KeyA':
+      moving.left = value;
+      e.preventDefault();
+      e.stopPropagation();
       break;
-    case 'd':
-      movementDirection.x += 1;
+    case 'KeyD':
+      moving.right = value;
+      e.preventDefault();
+      e.stopPropagation();
       break;
     default:
       break;
@@ -49,11 +62,13 @@ const handleMouseMove = (e: MouseEvent): void => {
 
 const handleLockChange = (): void => {
   if (document.pointerLockElement) {
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousemove", (e: MouseEvent) => handleMouseMove(e));
+    document.addEventListener('keydown', (e: KeyboardEvent) => handleKeyDown(e, true));
+    document.addEventListener('keyup', (e: KeyboardEvent) => handleKeyDown(e, false));
   } else {
-    document.removeEventListener("mousemove", handleMouseMove);
-    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener("mousemove", (e: MouseEvent) => handleMouseMove(e));
+    document.removeEventListener('keydown', (e: KeyboardEvent) => handleKeyDown(e, true));
+    document.removeEventListener('keyup', (e: KeyboardEvent) => handleKeyDown(e, false));
   }
 }
 
@@ -87,17 +102,16 @@ const init = (canvas: HTMLCanvasElement): void => {
 }
 
 const updateMovement = (delta: DOMHighResTimeStamp): void => {
-  if (movementDirection.x > 0) {
+  if (moving.right) {
     vec3.mulScalar(vec3.normalize(vec3.cross(front, up, velocity), velocity), speed * delta, velocity);
   }
-  else if (movementDirection.x < 0) {
+  if (moving.left) {
     vec3.mulScalar(vec3.normalize(vec3.cross(front, up, velocity), velocity), -speed * delta, velocity);
   }
-
-  if (movementDirection.z > 0) {
+  if (moving.forward) {
     vec3.mulScalar(front, speed * delta, velocity);
   }
-  else if (movementDirection.z < 0) {
+  if (moving.backward) {
     vec3.mulScalar(front, -speed * delta, velocity);
   }
 
@@ -108,15 +122,12 @@ const updateMovement = (delta: DOMHighResTimeStamp): void => {
   vec3.normalize(front, front);
 
   position.x += velocity[0];
-  position.y = 0;
+  position.y += velocity[1];
   position.z += velocity[2];
 
   velocity[0] *= 0.93;
   velocity[1] *= 0.93;
   velocity[2] *= 0.93;
-  movementDirection.x = 0;
-  movementDirection.y = 0;
-  movementDirection.z = 0;
 }
 
 const update = (delta: DOMHighResTimeStamp): void => {
