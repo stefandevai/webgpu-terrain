@@ -79,7 +79,7 @@ const calculateNormals = (heightMap: HeightMap): Vec3[] => {
 
   for (let j = 0; j < heightMap.size.h; j++) {
     for (let i = 0; i < heightMap.size.w; i++) {
-      if (j == 0 || j == 0 || j == heightMap.size.h - 1 || i == heightMap.size.w - 1) {
+      if (j == 0 || i == 0 || j == heightMap.size.h - 1 || i == heightMap.size.w - 1) {
         normals.push(vec3.fromValues(0, 0, 0));
         continue;
       }
