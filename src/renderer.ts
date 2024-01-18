@@ -1,6 +1,7 @@
 import { vec3 } from 'wgpu-matrix';
 import type { Mat4 } from 'wgpu-matrix';
 import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
+import type { StructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
@@ -18,6 +19,7 @@ interface RenderData {
 let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
+let uniformValues: StructuredView | null = null;
 
 const vertexSize = 8 * 4;
 const positionOffset = 0;
@@ -26,9 +28,6 @@ const uvOffset = 4 * 6;
 
 const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
 const lightPosition = vec3.fromValues(-5.0, -10.0, 15.0);
-
-const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragmentShaderSource);
-const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
 
 const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
@@ -118,6 +117,10 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     minFilter: 'linear',
   });
 
+  const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragmentShaderSource);
+
+  uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
+
   const uniformBuffer = createUniformBuffer(device, uniformValues.arrayBuffer.byteLength);
 
   const uniformBindGroup = device.createBindGroup({
@@ -183,7 +186,7 @@ const pushMesh = (mesh: Mesh): void => {
 }
 
 const render = (tranformationMatrix: Mat4): void => {
-  if (device == null || context == null || renderData == null || !renderData.renderPassDescriptor.colorAttachments) {
+  if (!device || !context || !renderData || !uniformValues) {
     return;
   }
 

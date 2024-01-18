@@ -6,7 +6,7 @@ type Position = {
   z: number;
 };
 
-const position: Position = { x: 50, y: 3, z: 40 };
+const position: Position = { x: 50, y: 5, z: 100 };
 const velocity = vec3.fromValues(0, 0, 0);
 const moving = {
   left: false,
@@ -99,7 +99,7 @@ const init = (canvas: HTMLCanvasElement): void => {
     Math.PI / 4,
     aspect,
     1,
-    100,
+    1000,
     projection,
   );
 

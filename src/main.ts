@@ -6,6 +6,8 @@ import './style.css';
 const run = async () => {
   if (!navigator.gpu) {
     console.error('WebGPU not supported on this browser');
+    const message = document.querySelector('#no-webgpu');
+    message?.classList.remove('hidden');
     return;
   }
 
@@ -37,7 +39,7 @@ const run = async () => {
 
     const delta = (currentTime - lastTime) / 1000.0;
     lastTime = currentTime;
-    
+
     camera.update(delta);
     renderer.render(camera.getTransformationMatrix());
     requestAnimationFrame(frame);
