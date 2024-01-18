@@ -23,7 +23,6 @@ type Vector3 = {
 type HeightMap = {
   array: Float32Array;
   size: Size;
-  normals: Vec3[];
   yScale: number;
 }
 
@@ -34,7 +33,6 @@ const generateHeightMap = (size: Size): HeightMap => {
   };
 
   const heightMap = new Float32Array(heightMapSize.w * heightMapSize.h);
-  const normals: Vec3[] = [];
 
   // for (let j = 0; j < heightMapSize.h; j++) {
   //   for (let i = 0; i < heightMapSize.w; i++) {
@@ -43,62 +41,60 @@ const generateHeightMap = (size: Size): HeightMap => {
   //   }
   // }
 
-  const yScale = 0;
+  const yScale = 5;
   const noise = new FastNoiseLite();
   noise.SetSeed(1337);
   noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-  noise.SetFrequency(0.08);
-
-    /* noise.SetSeed(seed); */
-  /* noise.SetNoiseType(FastNoiseLite::NoiseType::NoiseType_OpenSimplex2S); */
-  /* noise.SetRotationType3D(FastNoiseLite::RotationType3D_ImproveXYPlanes); */
-  /* noise.SetFrequency(simplex_freq); */
-  /* noise.SetFractalType(FastNoiseLite::FractalType::FractalType_FBm); */
-  /* noise.SetFractalOctaves(simplex_octaves); */
-  /* noise.SetFractalLacunarity(simplex_lacunarity); */
-  /* noise.SetFractalGain(simplex_gain); */
-  /* noise.SetFractalWeightedStrength(simplex_weighted_strength); */
-
+  noise.SetFrequency(0.02);
+  noise.SetFractalType(FastNoiseLite.FractalType.FBm);
+  noise.SetFractalOctaves(5);
+  noise.SetFractalLacunarity(2);
+  noise.SetFractalGain(0.5);
+  noise.SetFractalWeightedStrength(0);
 
   for (let j = 0; j < heightMapSize.h; j++) {
     for (let i = 0; i < heightMapSize.w; i++) {
-      heightMap[j * heightMapSize.w + i] = noise.GetNoise(i, j) * yScale;
-    }
-  }
-
-  // Calculate normals
-  // https://www.flipcode.com/archives/Calculating_Vertex_Normals_for_Height_Maps.shtml
-  for (let j = 0; j < heightMapSize.h; j++) {
-    for (let i = 0; i < heightMapSize.w; i++) {
-      if (j == 0 || j == 0 || j == heightMapSize.h - 1 || i == heightMapSize.w - 1) {
-        normals.push(vec3.fromValues(0, 0, 0));
-        continue;
-      }
-
-      const x1 = heightMap[(j - 1) * heightMapSize.w + i];
-      const x2 = heightMap[(j + 1) * heightMapSize.w + i];
-      const y1 = heightMap[j * heightMapSize.w + i - 1];
-      const y2 = heightMap[j * heightMapSize.w + i + 1];
-
-      const dx = x1 - x2;
-      const dy = y1 - y2;
-
-      const normal = vec3.fromValues(dx, -2, dy);
-      vec3.normalize(normal, normal);
-      normals.push(normal);
-      console.log(normal)
+      heightMap[j * heightMapSize.w + i] = noise.GetNoise(i, j);
     }
   }
 
   return {
     array: heightMap,
     size: heightMapSize,
-    normals,
     yScale,
   };
 }
 
-const getQuadVertices = (heightMap: HeightMap, offset: Vector3): Float32Array => {
+// https://www.flipcode.com/archives/Calculating_Vertex_Normals_for_Height_Maps.shtml
+// TODO: Improve based on this article: https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/perlin-noise-part-2/perlin-noise-computing-derivatives.html
+const calculateNormals = (heightMap: HeightMap): Vec3[] => {
+  const normals: Vec3[] = [];
+
+  for (let j = 0; j < heightMap.size.h; j++) {
+    for (let i = 0; i < heightMap.size.w; i++) {
+      if (j == 0 || j == 0 || j == heightMap.size.h - 1 || i == heightMap.size.w - 1) {
+        normals.push(vec3.fromValues(0, 0, 0));
+        continue;
+      }
+
+      const x1 = heightMap.array[(j - 1) * heightMap.size.w + i];
+      const x2 = heightMap.array[(j + 1) * heightMap.size.w + i];
+      const y1 = heightMap.array[j * heightMap.size.w + i - 1];
+      const y2 = heightMap.array[j * heightMap.size.w + i + 1];
+
+      const dx = x1 - x2;
+      const dy = y1 - y2;
+
+      const normal = vec3.fromValues(dx * heightMap.yScale, -2, dy * heightMap.yScale);
+      vec3.normalize(normal, normal);
+      normals.push(normal);
+    }
+  }
+
+  return normals;
+}
+
+const getQuadVertices = (heightMap: HeightMap, normals: Vec3[], offset: Vector3): number[] => {
   const quadSize = {
     x: 1,
     y: 1,
@@ -109,15 +105,17 @@ const getQuadVertices = (heightMap: HeightMap, offset: Vector3): Float32Array =>
   const index3 = heightMap.size.w*(offset.z + 1) + offset.x + 2;
   const index4 = heightMap.size.w*(offset.z + 1) + offset.x + 1;
 
+  const scale = heightMap.yScale;
+
   return [
-    offset.x,               offset.y + heightMap.array[index1], offset.z + quadSize.y,  ...heightMap.normals[index1], 0, 1,
-    offset.x + quadSize.x,  offset.y + heightMap.array[index2], offset.z + quadSize.y,  ...heightMap.normals[index2],  1, 1,
-    offset.x + quadSize.x,  offset.y + heightMap.array[index3], offset.z,               ...heightMap.normals[index3],  1, 0,
-    offset.x,               offset.y + heightMap.array[index4], offset.z,               ...heightMap.normals[index4],  0, 0,
+    offset.x,               offset.y + heightMap.array[index1] * scale, offset.z + quadSize.y,  ...normals[index1], 0, 1,
+    offset.x + quadSize.x,  offset.y + heightMap.array[index2] * scale, offset.z + quadSize.y,  ...normals[index2],  1, 1,
+    offset.x + quadSize.x,  offset.y + heightMap.array[index3] * scale, offset.z,               ...normals[index3],  1, 0,
+    offset.x,               offset.y + heightMap.array[index4] * scale, offset.z,               ...normals[index4],  0, 0,
   ];
 }
 
-const getQuadIndices = (offset: number): Uint32Array => {
+const getQuadIndices = (offset: number): number[] => {
   return [
     0 + offset*4, 1 + offset * 4, 2 + offset * 4,
     3 + offset * 4, 0 + offset * 4, 2 + offset * 4,
@@ -132,6 +130,8 @@ const create = (): Mesh => {
 
   const heightMap = generateHeightMap(size);
 
+  const normals = calculateNormals(heightMap);
+
   const verticesPerQuad = 2 * 2;
   const vertexCount = size.w * size.h * verticesPerQuad;
 
@@ -139,7 +139,6 @@ const create = (): Mesh => {
   const quadLength = vertexLength * verticesPerQuad;
   const bufferLength = size.w * size.h * quadLength;
   const vertexArray = new Float32Array(bufferLength);
-
 
   const indexCount = size.w * size.h * 6;
   const indexArray = new Uint32Array(indexCount);
@@ -153,7 +152,7 @@ const create = (): Mesh => {
       };
 
       const bufferOffset = (j * size.w + i) * quadLength;
-      vertexArray.set(getQuadVertices(heightMap, quadOffset), bufferOffset);
+      vertexArray.set(getQuadVertices(heightMap, normals, quadOffset), bufferOffset);
 
       const indexOffset = (j * size.w + i) * 6;
       indexArray.set(getQuadIndices(j * size.w + i), indexOffset);

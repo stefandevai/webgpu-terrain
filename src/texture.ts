@@ -1,4 +1,4 @@
-export const createTexture = async (path: string, device: GPUDevice): GPUTexture => {
+export const createTexture = async (path: string, device: GPUDevice): Promise<GPUTexture> => {
   const res = await fetch(path);
   const bitmap = await createImageBitmap(await res.blob());
 

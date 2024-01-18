@@ -1,17 +1,15 @@
-import { mat4, vec3 } from 'wgpu-matrix';
+import { vec3 } from 'wgpu-matrix';
+import type { Mat4 } from 'wgpu-matrix';
 import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
 import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
 import {
-  cubeVertexArray,
-  cubeIndexArray,
   cubeVertexSize,
   cubePositionOffset,
   cubeNormalOffset,
   cubeUVOffset,
-  cubeIndexCount,
 } from './data/meshes/cube';
 import type { Mesh } from './mesh';
 
@@ -42,12 +40,17 @@ const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
 const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
 
+  if (adapter == null) {
+    console.error('WebGPU not supported on this browser');
+    return;
+  }
+
   const adapterInfo = await adapter.requestAdapterInfo();
   console.log(`WebGPU vendor: ${adapterInfo.vendor}, architecture: ${adapterInfo.architecture}`);
 
   device = await adapter.requestDevice();
 
-  if (device == null) {
+  if (!device) {
     console.error('WebGPU not supported on this browser');
     return;
   }
@@ -144,7 +147,8 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     ],
   });
 
-  const renderPassDescriptor = {
+  const renderPassDescriptor: GPURenderPassDescriptor = {
+    // @ts-ignore
     colorAttachments: [
       {
         view: undefined,
@@ -171,6 +175,10 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
 }
 
 const pushMesh = (mesh: Mesh): void => {
+  if (device == null || renderData == null) {
+    return;
+  }
+
   const vertexBuffer = createVertexBuffer(device, mesh.vertexData);
   const indexBuffer = createIndexBuffer(device, mesh.indexData);
 
@@ -181,11 +189,12 @@ const pushMesh = (mesh: Mesh): void => {
   });
 }
 
-const render = (tranformationMatrix: mat4): void => {
-  if (device == null || context == null || renderData == null) {
+const render = (tranformationMatrix: Mat4): void => {
+  if (device == null || context == null || renderData == null || !renderData.renderPassDescriptor.colorAttachments) {
     return;
   }
 
+  // @ts-ignore
   renderData.renderPassDescriptor.colorAttachments[0].view = context.getCurrentTexture().createView();
 
   uniformValues.set({

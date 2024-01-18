@@ -1,7 +1,7 @@
 {
-  "name": "voxel-world",
+  "name": "webgpu-terrain",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@webgpu/types": "^0.1.40",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
   },

@@ -10,6 +10,12 @@ const run = async () => {
   }
 
   const canvas = document.querySelector('canvas');
+
+  if (!canvas) {
+    console.error('No canvas found');
+    return;
+  }
+
   camera.init(canvas);
   await renderer.init(canvas);
 

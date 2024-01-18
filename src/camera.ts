@@ -1,5 +1,10 @@
 import { mat4, vec3, utils } from 'wgpu-matrix';
-import { Position } from './types';
+
+type Position = {
+  x: number;
+  y: number;
+  z: number;
+};
 
 const position: Position = { x: 1, y: 2, z: 10 };
 const velocity = vec3.fromValues(0, 0, 0);
@@ -21,7 +26,7 @@ const sensitivity = 0.1;
 let yaw = -90;
 let pitch = 0;
 
-const updateKey = (e: KeyboardEvent, value: bool): void => {
+const updateKey = (e: KeyboardEvent, value: boolean): void => {
   switch (e.code) {
     case 'KeyW':
       moving.forward = value;
@@ -100,6 +105,7 @@ const init = (canvas: HTMLCanvasElement): void => {
 
   canvas.addEventListener("click", async () => {
     if(!document.pointerLockElement) {
+      // @ts-ignore
       await canvas.requestPointerLock({
         unadjustedMovement: true,
       });

@@ -14,16 +14,23 @@ fn main(
   @location(1) fs_normal: vec3<f32>,
   @location(2) fs_uv: vec2<f32>,
 ) -> @location(0) vec4<f32> {
-  var light_position = uniforms.light_position.xyz;
-  var light_color = uniforms.light_color.xyz;
+  // Light with defined position
+  /* var light_position = uniforms.light_position; */
+  /* let light_dir = normalize(light_position - fs_position); */
+
+  // Directional light
+  let light_dir = normalize(vec3f(-1, -1, 0));
+
+  var light_color = uniforms.light_color;
 
   var ambient_strength = 0.2;
   var ambient = light_color * ambient_strength;
 
   let normal = normalize(fs_normal);
-  let light_dir = normalize(light_position - fs_position);
+
   let diffuse = light_color * max(dot(normal, light_dir), 0.0);
   let texture = textureSample(texture, mSampler, fs_uv);
+  /* let ccolor = vec4f(0.9, 0.6, 0.3, 1.0); */
 
   let color = texture.rgb * (ambient + diffuse);
 
