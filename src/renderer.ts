@@ -118,7 +118,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
 
   const depthTexture = createDepthTexture(canvas, device);
 
-  const cubeTexture = await createTexture('/assets/textures/stone.png', device);
+  const cubeTexture = await createTexture(`${import.meta.env.BASE_URL}assets/textures/stone.png`, device);
 
   const sampler = device.createSampler({
     magFilter: 'linear',
