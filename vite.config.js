@@ -1,3 +1,3 @@
-{
-  "base": "/webgpu-terrain/"
-}
+export default {
+  base: "/webgpu-terrain/"
+};
