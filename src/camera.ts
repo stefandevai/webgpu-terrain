@@ -1,7 +1,7 @@
 import { mat4, vec3, utils } from 'wgpu-matrix';
 import { Position } from './types';
 
-const position: Position = { x: 0, y: 0, z: 10 };
+const position: Position = { x: 1, y: 2, z: 10 };
 const velocity = vec3.fromValues(0, 0, 0);
 const moving = {
   left: false,
@@ -10,7 +10,7 @@ const moving = {
   backward: false,
 };
 
-const speed = 30;
+const speed = 10;
 const modelViewProjectionMatrix = mat4.create();
 const projection = mat4.create();
 const view = mat4.create();
@@ -21,7 +21,7 @@ const sensitivity = 0.1;
 let yaw = -90;
 let pitch = 0;
 
-const handleKeyDown = (e: KeyboardEvent, value: bool): void => {
+const updateKey = (e: KeyboardEvent, value: bool): void => {
   switch (e.code) {
     case 'KeyW':
       moving.forward = value;
@@ -48,6 +48,14 @@ const handleKeyDown = (e: KeyboardEvent, value: bool): void => {
   }
 }
 
+const handleKeyDown = (e: KeyboardEvent): void => {
+  updateKey(e, true);
+}
+
+const handleKeyUp = (e: KeyboardEvent): void => {
+  updateKey(e, false);
+}
+
 const handleMouseMove = (e: MouseEvent): void => {
   yaw += e.movementX * sensitivity;
   pitch -= e.movementY * sensitivity;
@@ -62,13 +70,13 @@ const handleMouseMove = (e: MouseEvent): void => {
 
 const handleLockChange = (): void => {
   if (document.pointerLockElement) {
-    document.addEventListener("mousemove", (e: MouseEvent) => handleMouseMove(e));
-    document.addEventListener('keydown', (e: KeyboardEvent) => handleKeyDown(e, true));
-    document.addEventListener('keyup', (e: KeyboardEvent) => handleKeyDown(e, false));
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
   } else {
-    document.removeEventListener("mousemove", (e: MouseEvent) => handleMouseMove(e));
-    document.removeEventListener('keydown', (e: KeyboardEvent) => handleKeyDown(e, true));
-    document.removeEventListener('keyup', (e: KeyboardEvent) => handleKeyDown(e, false));
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('keyup', handleKeyUp);
   }
 }
 

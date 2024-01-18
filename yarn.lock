@@ -211,6 +211,11 @@ esbuild@^0.19.3:
     "@esbuild/win32-ia32" "0.19.10"
     "@esbuild/win32-x64" "0.19.10"
 
+fastnoise-lite@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/fastnoise-lite/-/fastnoise-lite-1.1.0.tgz#f80752f7347332b267e60dc4d3c9afb0ca2cd64e"
+  integrity sha512-uhLGX7YpM/PZvxE3ovMk124C6cxHXyMmiCzxTRJo4074bKz3miFDi+2yLuqv88n3UUlbyhU+v/fO0suvJNb97g==
+
 fsevents@~2.3.2, fsevents@~2.3.3:
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.3.tgz#cac6407785d03675a2a5e1a5305c697b347d90d6"

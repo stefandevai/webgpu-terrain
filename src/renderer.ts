@@ -1,4 +1,4 @@
-import { mat4, vec3, vec4 } from 'wgpu-matrix';
+import { mat4, vec3 } from 'wgpu-matrix';
 import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
@@ -11,16 +11,22 @@ import {
   cubePositionOffset,
   cubeNormalOffset,
   cubeUVOffset,
-  cubeIndexCount
+  cubeIndexCount,
 } from './data/meshes/cube';
+import type { Mesh } from './mesh';
 
 interface RenderData {
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
   uniformBuffer: GPUBuffer;
   uniformBindGroup: GPUBindGroup;
   renderPassDescriptor: GPURenderPassDescriptor;
   pipeline: GPURenderPipeline;
+  meshData: MeshData[];
+};
+
+interface MeshData {
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+  count: number;
 };
 
 let renderData: RenderData | null = null;
@@ -34,7 +40,11 @@ const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragme
 const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
 
 const init = async (canvas: HTMLCanvasElement): Promise<void> => {
-  const adapter = await navigator.gpu.requestAdapter();
+  const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+
+  const adapterInfo = await adapter.requestAdapterInfo();
+  console.log(`WebGPU vendor: ${adapterInfo.vendor}, architecture: ${adapterInfo.architecture}`);
+
   device = await adapter.requestDevice();
 
   if (device == null) {
@@ -50,9 +60,6 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     format: presentationFormat,
     alphaMode: 'premultiplied',
   });
-
-  const vertexBuffer = createVertexBuffer(device, cubeVertexArray);
-  const indexBuffer = createIndexBuffer(device, cubeIndexArray);
 
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
@@ -97,7 +104,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     },
     primitive: {
       topology: 'triangle-list',
-      cullMode: 'back',
+      // cullMode: 'back',
     },
     depthStencil: {
       depthWriteEnabled: true,
@@ -155,13 +162,23 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   };
 
   renderData = {
-    vertexBuffer,
-    indexBuffer,
     uniformBuffer,
     uniformBindGroup,
     renderPassDescriptor,
     pipeline,
+    meshData: [],
   };
+}
+
+const pushMesh = (mesh: Mesh): void => {
+  const vertexBuffer = createVertexBuffer(device, mesh.vertexData);
+  const indexBuffer = createIndexBuffer(device, mesh.indexData);
+
+  renderData.meshData.push({
+    vertexBuffer,
+    indexBuffer,
+    count: mesh.indexCount,
+  });
 }
 
 const render = (tranformationMatrix: mat4): void => {
@@ -182,10 +199,17 @@ const render = (tranformationMatrix: mat4): void => {
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
   passEncoder.setPipeline(renderData.pipeline);
-  passEncoder.setVertexBuffer(0, renderData.vertexBuffer);
-  passEncoder.setIndexBuffer(renderData.indexBuffer, 'uint32');
   passEncoder.setBindGroup(0, renderData.uniformBindGroup);
-  passEncoder.drawIndexed(cubeIndexCount, 1, 0, 0);
+
+  for (const mesh of renderData.meshData) {
+    // passEncoder.setVertexBuffer(0, mesh.vertexBuffer);
+    // passEncoder.draw(mesh.count);
+
+    passEncoder.setVertexBuffer(0, mesh.vertexBuffer);
+    passEncoder.setIndexBuffer(mesh.indexBuffer, 'uint32');
+    passEncoder.drawIndexed(mesh.count, 1, 0, 0);
+  }
+
   passEncoder.end();
 
   device.queue.submit([commandEncoder.finish()]);
@@ -194,4 +218,5 @@ const render = (tranformationMatrix: mat4): void => {
 export default {
   init,
   render,
+  pushMesh,
 };
