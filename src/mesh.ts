@@ -37,17 +37,17 @@ const generateHeightMap = (size: Size): HeightMap => {
     w: size.w + 2,
     h: size.h + 2,
   };
+  const yScale = 5;
 
   const heightMap = new Float32Array(heightMapSize.w * heightMapSize.h);
 
   // for (let j = 0; j < heightMapSize.h; j++) {
   //   for (let i = 0; i < heightMapSize.w; i++) {
-  //     heightMap[j * heightMapSize.w + i] = Math.sin(i) + Math.cos(j);
-  //     // heightMap[j * size.w + i] = 0;
+  //     // heightMap[j * heightMapSize.w + i] = Math.sin(i * 0.2) yScale;
+  //     heightMap[j * heightMapSize.w + i] = (Math.sin(j * 0.2) + Math.cos(i * 0.2)) * yScale;
   //   }
   // }
 
-  const yScale = 5;
   const noise = new FastNoiseLite();
   noise.SetSeed(1337);
   noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);

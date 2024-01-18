@@ -29,9 +29,9 @@ fn main(
   let normal = normalize(fs_normal);
 
   let diffuse = light_color * max(dot(normal, light_dir), 0.0);
-  let texture = textureSample(texture, mSampler, fs_uv);
+  let texture_value = textureSample(texture, mSampler, fs_uv);
 
-  let color = texture.rgb * (ambient + diffuse);
+  let color = texture_value.rgb * (ambient + diffuse);
 
-  return vec4f(color, texture.a);
+  return vec4f(color, texture_value.a);
 }
