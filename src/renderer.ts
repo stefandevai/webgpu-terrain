@@ -5,13 +5,7 @@ import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
 import { createTexture, createDepthTexture } from './texture';
 import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
-import {
-  cubeVertexSize,
-  cubePositionOffset,
-  cubeNormalOffset,
-  cubeUVOffset,
-} from './data/meshes/cube';
-import type { Mesh } from './mesh';
+import type { Mesh, MeshData } from './mesh';
 
 interface RenderData {
   uniformBuffer: GPUBuffer;
@@ -21,15 +15,14 @@ interface RenderData {
   meshData: MeshData[];
 };
 
-interface MeshData {
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
-  count: number;
-};
-
 let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
+
+const vertexSize = 8 * 4;
+const positionOffset = 0;
+const normalOffset = 4 * 3;
+const uvOffset = 4 * 6;
 
 const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
 const lightPosition = vec3.fromValues(-5.0, -10.0, 15.0);
@@ -73,21 +66,21 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
       entryPoint: 'main',
       buffers: [
         {
-          arrayStride: cubeVertexSize,
+          arrayStride: vertexSize,
           attributes: [
             {
               shaderLocation: 0,
-              offset: cubePositionOffset,
+              offset: positionOffset,
               format: 'float32x3',
             },
             {
               shaderLocation: 1,
-              offset: cubeNormalOffset,
+              offset: normalOffset,
               format: 'float32x3',
             },
             {
               shaderLocation: 2,
-              offset: cubeUVOffset,
+              offset: uvOffset,
               format: 'float32x2',
             },
           ],
@@ -107,7 +100,7 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     },
     primitive: {
       topology: 'triangle-list',
-      // cullMode: 'back',
+      cullMode: 'back',
     },
     depthStencil: {
       depthWriteEnabled: true,
@@ -211,9 +204,6 @@ const render = (tranformationMatrix: Mat4): void => {
   passEncoder.setBindGroup(0, renderData.uniformBindGroup);
 
   for (const mesh of renderData.meshData) {
-    // passEncoder.setVertexBuffer(0, mesh.vertexBuffer);
-    // passEncoder.draw(mesh.count);
-
     passEncoder.setVertexBuffer(0, mesh.vertexBuffer);
     passEncoder.setIndexBuffer(mesh.indexBuffer, 'uint32');
     passEncoder.drawIndexed(mesh.count, 1, 0, 0);

@@ -9,6 +9,12 @@ export type Mesh = {
   indexCount: number;
 };
 
+export type MeshData = {
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+  count: number;
+};
+
 type Size = {
   w: number;
   h: number;
@@ -66,7 +72,8 @@ const generateHeightMap = (size: Size): HeightMap => {
 }
 
 // https://www.flipcode.com/archives/Calculating_Vertex_Normals_for_Height_Maps.shtml
-// TODO: Improve based on this article: https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/perlin-noise-part-2/perlin-noise-computing-derivatives.html
+// TODO: Try to improve based on this article:
+// https://www.scratchapixel.com/lessons/procedural-generation-virtual-worlds/perlin-noise-part-2/perlin-noise-computing-derivatives.html
 const calculateNormals = (heightMap: HeightMap): Vec3[] => {
   const normals: Vec3[] = [];
 
@@ -108,7 +115,7 @@ const getQuadVertices = (heightMap: HeightMap, normals: Vec3[], offset: Vector3)
   const scale = heightMap.yScale;
 
   return [
-    offset.x,               offset.y + heightMap.array[index1] * scale, offset.z + quadSize.y,  ...normals[index1], 0, 1,
+    offset.x,               offset.y + heightMap.array[index1] * scale, offset.z + quadSize.y,  ...normals[index1],  0, 1,
     offset.x + quadSize.x,  offset.y + heightMap.array[index2] * scale, offset.z + quadSize.y,  ...normals[index2],  1, 1,
     offset.x + quadSize.x,  offset.y + heightMap.array[index3] * scale, offset.z,               ...normals[index3],  1, 0,
     offset.x,               offset.y + heightMap.array[index4] * scale, offset.z,               ...normals[index4],  0, 0,
@@ -117,7 +124,7 @@ const getQuadVertices = (heightMap: HeightMap, normals: Vec3[], offset: Vector3)
 
 const getQuadIndices = (offset: number): number[] => {
   return [
-    0 + offset*4, 1 + offset * 4, 2 + offset * 4,
+    0 + offset * 4, 1 + offset * 4, 2 + offset * 4,
     3 + offset * 4, 0 + offset * 4, 2 + offset * 4,
   ];
 }

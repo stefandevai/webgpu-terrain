@@ -1,7 +1,7 @@
 struct Uniforms {
-  mvp : mat4x4<f32>,
-  light_color : vec3<f32>,
-  light_position : vec3<f32>,
+  mvp : mat4x4f,
+  light_color : vec3f,
+  light_position : vec3f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;
@@ -10,13 +10,13 @@ struct Uniforms {
 
 @fragment
 fn main(
-  @location(0) fs_position: vec3<f32>,
-  @location(1) fs_normal: vec3<f32>,
-  @location(2) fs_uv: vec2<f32>,
-) -> @location(0) vec4<f32> {
-  // Light with defined position
-  /* var light_position = uniforms.light_position; */
-  /* let light_dir = normalize(light_position - fs_position); */
+  @location(0) fs_position: vec3f,
+  @location(1) fs_normal: vec3f,
+  @location(2) fs_uv: vec2f,
+) -> @location(0) vec4f {
+  // Positioned light
+  // var light_position = uniforms.light_position;
+  // let light_dir = normalize(light_position - fs_position);
 
   // Directional light
   let light_dir = normalize(vec3f(-1, -1, 0));
@@ -30,9 +30,8 @@ fn main(
 
   let diffuse = light_color * max(dot(normal, light_dir), 0.0);
   let texture = textureSample(texture, mSampler, fs_uv);
-  /* let ccolor = vec4f(0.9, 0.6, 0.3, 1.0); */
 
   let color = texture.rgb * (ambient + diffuse);
 
-  return vec4(color, texture.a);
+  return vec4f(color, texture.a);
 }

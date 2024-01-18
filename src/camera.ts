@@ -6,7 +6,7 @@ type Position = {
   z: number;
 };
 
-const position: Position = { x: 1, y: 2, z: 10 };
+const position: Position = { x: 50, y: 3, z: 40 };
 const velocity = vec3.fromValues(0, 0, 0);
 const moving = {
   left: false,
