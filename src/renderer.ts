@@ -4,22 +4,33 @@ import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
 import type { StructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
 import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
-import { createTexture, createDepthTexture } from './texture';
+import vertexShaderSourceCubemap from './data/shaders/cubemap.vert.wgsl?raw';
+import fragmentShaderSourceCubemap from './data/shaders/cubemap.frag.wgsl?raw';
+import { createTexture, createDepthTexture, createCubemapTexture } from './texture';
 import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
 import type { Mesh, MeshData } from './mesh';
 
+enum PipelineType {
+  Terrain = 'terrain',
+  Cubemap = 'cubemap',
+}
+
 interface RenderData {
-  uniformBuffer: GPUBuffer;
-  uniformBindGroup: GPUBindGroup;
   renderPassDescriptor: GPURenderPassDescriptor;
-  pipeline: GPURenderPipeline;
-  meshData: MeshData[];
+  pipelines: {
+    [key: PipelineType]: {
+      uniformBuffer: GPUBuffer;
+      uniformBindGroup: GPUBindGroup;
+      uniformValues: StructuredView;
+      pipeline: GPURenderPipeline;
+      meshData: MeshData[];
+    }
+  };
 };
 
 let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
-let uniformValues: StructuredView | null = null;
 
 const vertexSize = 8 * 4;
 const positionOffset = 0;
@@ -56,6 +67,81 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     alphaMode: 'premultiplied',
   });
 
+  // Cubemap pipeline
+  const pipelineCubemap = device.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+      module: device.createShaderModule({
+        code: vertexShaderSourceCubemap,
+      }),
+      entryPoint: 'main',
+    },
+    fragment: {
+      module: device.createShaderModule({
+        code: fragmentShaderSourceCubemap,
+      }),
+      entryPoint: 'main',
+      targets: [{
+        format: presentationFormat,
+      }],
+    },
+    primitive: {
+      topology: 'triangle-list',
+    },
+    depthStencil: {
+      depthWriteEnabled: true,
+      depthCompare: 'less-equal',
+      format: 'depth24plus',
+    },
+  });
+
+  const cubemapTexture = await createCubemapTexture(device, [
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/px.jpg`,
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/nx.jpg`,
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/py.jpg`,
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/ny.jpg`,
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/pz.jpg`,
+    `${import.meta.env.BASE_URL}assets/textures/cubemap2/nz.jpg`,
+  ]);
+
+  const samplerCubemap = device.createSampler({
+    addressModeU: 'repeat',
+    addressModeV: 'repeat',
+    magFilter: 'linear',
+    minFilter: 'nearest',
+    mipmapFilter: 'nearest',
+    maxAnisotropy: 1,
+  });
+
+  const uniformDefinitionsCubemap = makeShaderDataDefinitions(vertexShaderSourceCubemap + fragmentShaderSourceCubemap);
+
+  const uniformValuesCubemap = makeStructuredView(uniformDefinitionsCubemap.uniforms.uniforms);
+
+  const uniformBufferCubemap = createUniformBuffer(device, uniformValuesCubemap.arrayBuffer.byteLength);
+
+  const uniformBindGroupCubemap = device.createBindGroup({
+    layout: pipelineCubemap.getBindGroupLayout(0),
+    entries: [
+      {
+        binding: 0,
+        resource: {
+          buffer: uniformBufferCubemap,
+        },
+      },
+      {
+        binding: 1,
+        resource: samplerCubemap,
+      },
+      {
+        binding: 2,
+        resource: cubemapTexture.createView({
+          dimension: 'cube',
+        }),
+      },
+    ],
+  });
+
+  // Terrain pipeline
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
     vertex: {
@@ -103,23 +189,23 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     },
     depthStencil: {
       depthWriteEnabled: true,
-      depthCompare: 'less',
+      depthCompare: 'less-equal',
       format: 'depth24plus',
     },
   });
 
-  const depthTexture = createDepthTexture(canvas, device);
+  const depthTexture = createDepthTexture(device, { w: canvas.width, h: canvas.height });
 
-  const cubeTexture = await createTexture(`${import.meta.env.BASE_URL}assets/textures/stone.png`, device);
+  const cubeTexture = await createTexture(device, `${import.meta.env.BASE_URL}assets/textures/stone.png`);
 
   const sampler = device.createSampler({
     magFilter: 'linear',
-    minFilter: 'linear',
+    minFilter: 'nearest',
   });
 
   const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragmentShaderSource);
 
-  uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
+  const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
 
   const uniformBuffer = createUniformBuffer(device, uniformValues.arrayBuffer.byteLength);
 
@@ -162,11 +248,23 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   };
 
   renderData = {
-    uniformBuffer,
-    uniformBindGroup,
     renderPassDescriptor,
-    pipeline,
-    meshData: [],
+    pipelines: {
+      [PipelineType.Cubemap]: {
+        uniformBuffer: uniformBufferCubemap,
+        uniformBindGroup: uniformBindGroupCubemap,
+        uniformValues: uniformValuesCubemap,
+        pipeline: pipelineCubemap,
+        meshData: [],
+      },
+      [PipelineType.Terrain]: {
+        uniformBuffer,
+        uniformBindGroup,
+        uniformValues,
+        pipeline,
+        meshData: [],
+      }
+    }
   };
 }
 
@@ -178,42 +276,67 @@ const pushMesh = (mesh: Mesh): void => {
   const vertexBuffer = createVertexBuffer(device, mesh.vertexData);
   const indexBuffer = createIndexBuffer(device, mesh.indexData);
 
-  renderData.meshData.push({
+  renderData.pipelines[PipelineType.Terrain].meshData.push({
     vertexBuffer,
     indexBuffer,
     count: mesh.indexCount,
   });
 }
 
-const render = (tranformationMatrix: Mat4): void => {
-  if (!device || !context || !renderData || !uniformValues) {
+const render = (camera: any): void => {
+  if (!device || !context || !renderData) {
     return;
   }
 
   // @ts-ignore
   renderData.renderPassDescriptor.colorAttachments[0].view = context.getCurrentTexture().createView();
 
-  uniformValues.set({
-    mvp: tranformationMatrix,
+  const commandEncoder = device.createCommandEncoder();
+  const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
+
+  // Cubemap pipeline
+  // const dy = Math.tan(Math.PI/8);
+  // const dx = dy * 1.1271676300578035;
+
+  // const nu = vec3.mulScalar(camera.up, dx);
+  // const nr = vec3.mulScalar(camera.right, dy);
+
+  renderData.pipelines[PipelineType.Cubemap].uniformValues.set({
+    front: camera.front,
+    right: camera.right,
+    up: camera.up,
+  });
+  device.queue.writeBuffer(
+    renderData.pipelines[PipelineType.Cubemap].uniformBuffer,
+    0, 
+    renderData.pipelines[PipelineType.Cubemap].uniformValues.arrayBuffer
+  );
+  passEncoder.setPipeline(renderData.pipelines[PipelineType.Cubemap].pipeline);
+  passEncoder.setBindGroup(0, renderData.pipelines[PipelineType.Cubemap].uniformBindGroup);
+  passEncoder.draw(6);
+
+  // Terrain pipeline
+  renderData.pipelines[PipelineType.Terrain].uniformValues.set({
+    mvp: camera.getTransformationMatrix(),
     light_position: lightPosition,
     light_color: lightColor,
   });
+  device.queue.writeBuffer(
+    renderData.pipelines[PipelineType.Terrain].uniformBuffer,
+    0, 
+    renderData.pipelines[PipelineType.Terrain].uniformValues.arrayBuffer
+  );
+  passEncoder.setPipeline(renderData.pipelines[PipelineType.Terrain].pipeline);
+  passEncoder.setBindGroup(0, renderData.pipelines[PipelineType.Terrain].uniformBindGroup);
 
-  device.queue.writeBuffer(renderData.uniformBuffer, 0, uniformValues.arrayBuffer);
-
-  const commandEncoder = device.createCommandEncoder();
-  const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
-  passEncoder.setPipeline(renderData.pipeline);
-  passEncoder.setBindGroup(0, renderData.uniformBindGroup);
-
-  for (const mesh of renderData.meshData) {
+  for (const mesh of renderData.pipelines[PipelineType.Terrain].meshData) {
     passEncoder.setVertexBuffer(0, mesh.vertexBuffer);
     passEncoder.setIndexBuffer(mesh.indexBuffer, 'uint32');
     passEncoder.drawIndexed(mesh.count, 1, 0, 0);
   }
 
+  // Draw
   passEncoder.end();
-
   device.queue.submit([commandEncoder.finish()]);
 }
 

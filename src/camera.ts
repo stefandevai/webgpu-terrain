@@ -16,12 +16,15 @@ const moving = {
 };
 
 const speed = 10;
+let aspectRatio = 1;
 const modelViewProjectionMatrix = mat4.create();
 const projection = mat4.create();
 const view = mat4.create();
 const target = vec3.fromValues(0, 0, 0);
 const front = vec3.fromValues(0, 0, -1);
+const right = vec3.fromValues(1, 0, 0);
 const up = vec3.fromValues(0, 1, 0);
+const up2 = vec3.fromValues(0, 1, 0);
 const sensitivity = 0.1;
 let yaw = -90;
 let pitch = 0;
@@ -93,11 +96,12 @@ const init = (canvas: HTMLCanvasElement): void => {
   canvas.width = width;
   canvas.height = height;
 
-  const aspect = width / height;
+  aspectRatio = width / height;
+  console.log(width, height, aspectRatio);
 
   mat4.perspective(
     Math.PI / 4,
-    aspect,
+    aspectRatio,
     1,
     1000,
     projection,
@@ -129,11 +133,16 @@ const updateMovement = (delta: DOMHighResTimeStamp): void => {
     vec3.mulScalar(front, -speed * delta, velocity);
   }
 
-
   front[0] = Math.cos(utils.degToRad(yaw)) * Math.cos(utils.degToRad(pitch));
   front[1] = Math.sin(utils.degToRad(pitch));
   front[2] = Math.sin(utils.degToRad(yaw)) * Math.cos(utils.degToRad(pitch));
   vec3.normalize(front, front);
+
+  vec3.cross(front, up, right);
+  vec3.normalize(right, right);
+
+  vec3.cross(right, front, up2);
+  vec3.normalize(up2, up2);
 
   position.x += velocity[0];
   position.y += velocity[1];
@@ -148,16 +157,11 @@ const update = (delta: DOMHighResTimeStamp): void => {
   updateMovement(delta);
 }
 
-const getTransformationMatrix = () => {
-  // const now = Date.now() / 1000;
-  // mat4.lookAt([Math.sin(now) * 50, position.y, Math.cos(now) * 50], target, up, view);
+const getTransformationMatrix = (): Float32Array => {
   const cameraPosition = vec3.fromValues(position.x, position.y, position.z);
   vec3.add(cameraPosition, front, target);
 
   mat4.lookAt(cameraPosition, target, up, view);
-  // const viewMatrix = mat4.identity();
-  // mat4.translate(viewMatrix, vec3.fromValues(0, 0, -30), viewMatrix);
-  // mat4.rotate(viewMatrix, vec3.fromValues(Math.sin(now), Math.cos(now), 0), 1, viewMatrix);
   mat4.multiply(projection, view, modelViewProjectionMatrix);
 
   return modelViewProjectionMatrix as Float32Array;
@@ -168,4 +172,8 @@ export default {
   update,
   getTransformationMatrix,
   position,
+  up: up,
+  front,
+  right,
+  aspectRatio,
 };

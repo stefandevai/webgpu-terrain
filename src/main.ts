@@ -41,7 +41,7 @@ const run = async () => {
     lastTime = currentTime;
 
     camera.update(delta);
-    renderer.render(camera.getTransformationMatrix());
+    renderer.render(camera);
     requestAnimationFrame(frame);
   };
 

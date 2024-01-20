@@ -1,6 +1,7 @@
 import FastNoiseLite from 'fastnoise-lite';
 import { vec3 } from 'wgpu-matrix';
 import type { Vec3 } from 'wgpu-matrix';
+import type { Vector3, Size } from './types';
 
 export type Mesh = {
   vertexData: Float32Array;
@@ -15,17 +16,6 @@ export type MeshData = {
   count: number;
 };
 
-type Size = {
-  w: number;
-  h: number;
-};
-
-type Vector3 = {
-  x: number;
-  y: number;
-  z: number;
-};
-
 type HeightMap = {
   array: Float32Array;
   size: Size;
@@ -37,23 +27,24 @@ const generateHeightMap = (size: Size): HeightMap => {
     w: size.w + 2,
     h: size.h + 2,
   };
-  const yScale = 5;
+  const yScale = 8;
 
   const heightMap = new Float32Array(heightMapSize.w * heightMapSize.h);
 
   // for (let j = 0; j < heightMapSize.h; j++) {
   //   for (let i = 0; i < heightMapSize.w; i++) {
+  //     // heightMap[j * heightMapSize.w + i] = 0;
   //     // heightMap[j * heightMapSize.w + i] = Math.sin(i * 0.2) yScale;
   //     heightMap[j * heightMapSize.w + i] = (Math.sin(j * 0.2) + Math.cos(i * 0.2)) * yScale;
   //   }
   // }
 
   const noise = new FastNoiseLite();
-  noise.SetSeed(1337);
+  noise.SetSeed();
   noise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
   noise.SetFrequency(0.02);
   noise.SetFractalType(FastNoiseLite.FractalType.FBm);
-  noise.SetFractalOctaves(5);
+  noise.SetFractalOctaves(3);
   noise.SetFractalLacunarity(2);
   noise.SetFractalGain(0.5);
   noise.SetFractalWeightedStrength(0);

@@ -3,12 +3,13 @@ struct Uniforms {
   light_color : vec3f,
   light_position : vec3f,
 }
+
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;
 
 struct VertexOutput {
   @builtin(position) Position : vec4f,
   @location(0) fs_position : vec3f,
-  @location(1) fs_normal : vec3f,
+  @location(1) @interpolate(perspective) fs_normal : vec3f,
   @location(2) fs_uv : vec2f,
 }
 
