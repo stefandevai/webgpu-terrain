@@ -18,6 +18,7 @@ const moving = {
 const speed = 10;
 let aspectRatio = 1;
 const modelViewProjectionMatrix = mat4.create();
+const cubemapMatrix = mat4.create();
 const projection = mat4.create();
 const view = mat4.create();
 const target = vec3.fromValues(0, 0, 0);
@@ -151,6 +152,12 @@ const updateMovement = (delta: DOMHighResTimeStamp): void => {
   velocity[0] *= 0.93;
   velocity[1] *= 0.93;
   velocity[2] *= 0.93;
+
+  const cameraPosition = vec3.fromValues(position.x, position.y, position.z);
+  vec3.add(cameraPosition, front, target);
+
+  mat4.lookAt(cameraPosition, target, up, view);
+  mat4.multiply(projection, view, modelViewProjectionMatrix);
 }
 
 const update = (delta: DOMHighResTimeStamp): void => {
@@ -158,19 +165,25 @@ const update = (delta: DOMHighResTimeStamp): void => {
 }
 
 const getTransformationMatrix = (): Float32Array => {
-  const cameraPosition = vec3.fromValues(position.x, position.y, position.z);
-  vec3.add(cameraPosition, front, target);
-
-  mat4.lookAt(cameraPosition, target, up, view);
-  mat4.multiply(projection, view, modelViewProjectionMatrix);
-
   return modelViewProjectionMatrix as Float32Array;
+}
+
+const getCubemapMatrix = (): Float32Array => {
+  mat4.copy(view, cubemapMatrix);
+  cubemapMatrix[12] = 0;
+  cubemapMatrix[13] = 0;
+  cubemapMatrix[14] = 0;
+  mat4.multiply(projection, cubemapMatrix, cubemapMatrix);
+  mat4.inverse(cubemapMatrix, cubemapMatrix);
+
+  return cubemapMatrix as Float32Array;
 }
 
 export default {
   init,
   update,
   getTransformationMatrix,
+  getCubemapMatrix,
   position,
   up: up,
   front,

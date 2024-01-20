@@ -294,27 +294,6 @@ const render = (camera: any): void => {
   const commandEncoder = device.createCommandEncoder();
   const passEncoder = commandEncoder.beginRenderPass(renderData.renderPassDescriptor);
 
-  // Cubemap pipeline
-  // const dy = Math.tan(Math.PI/8);
-  // const dx = dy * 1.1271676300578035;
-
-  // const nu = vec3.mulScalar(camera.up, dx);
-  // const nr = vec3.mulScalar(camera.right, dy);
-
-  renderData.pipelines[PipelineType.Cubemap].uniformValues.set({
-    front: camera.front,
-    right: camera.right,
-    up: camera.up,
-  });
-  device.queue.writeBuffer(
-    renderData.pipelines[PipelineType.Cubemap].uniformBuffer,
-    0, 
-    renderData.pipelines[PipelineType.Cubemap].uniformValues.arrayBuffer
-  );
-  passEncoder.setPipeline(renderData.pipelines[PipelineType.Cubemap].pipeline);
-  passEncoder.setBindGroup(0, renderData.pipelines[PipelineType.Cubemap].uniformBindGroup);
-  passEncoder.draw(6);
-
   // Terrain pipeline
   renderData.pipelines[PipelineType.Terrain].uniformValues.set({
     mvp: camera.getTransformationMatrix(),
@@ -334,6 +313,19 @@ const render = (camera: any): void => {
     passEncoder.setIndexBuffer(mesh.indexBuffer, 'uint32');
     passEncoder.drawIndexed(mesh.count, 1, 0, 0);
   }
+
+  // Cubemap pipeline
+  renderData.pipelines[PipelineType.Cubemap].uniformValues.set({
+    view_projection: camera.getCubemapMatrix(),
+  });
+  device.queue.writeBuffer(
+    renderData.pipelines[PipelineType.Cubemap].uniformBuffer,
+    0, 
+    renderData.pipelines[PipelineType.Cubemap].uniformValues.arrayBuffer
+  );
+  passEncoder.setPipeline(renderData.pipelines[PipelineType.Cubemap].pipeline);
+  passEncoder.setBindGroup(0, renderData.pipelines[PipelineType.Cubemap].uniformBindGroup);
+  passEncoder.draw(3);
 
   // Draw
   passEncoder.end();
