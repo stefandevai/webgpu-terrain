@@ -6,187 +6,178 @@ type Position = {
   z: number;
 };
 
-const position: Position = { x: 50, y: 5, z: 100 };
-const velocity = vec3.fromValues(0, 0, 0);
-const moving = {
-  left: false,
-  right: false,
-  forward: false,
-  backward: false,
-};
+class Camera {
+  position: Position = { x: 50, y: 5, z: 100 };
+  velocity = vec3.fromValues(0, 0, 0);
+  moving = {
+    left: false,
+    right: false,
+    forward: false,
+    backward: false,
+  };
+  speed = 10;
+  aspectRatio = 1;
+  modelViewProjectionMatrix = mat4.create();
+  cubemapMatrix = mat4.create();
+  projection = mat4.create();
+  view = mat4.create();
+  target = vec3.fromValues(0, 0, 0);
+  front = vec3.fromValues(0, 0, -1);
+  right = vec3.fromValues(1, 0, 0);
+  up = vec3.fromValues(0, 1, 0);
+  sensitivity = 0.1;
+  yaw = -90;
+  pitch = 0;
 
-const speed = 10;
-let aspectRatio = 1;
-const modelViewProjectionMatrix = mat4.create();
-const cubemapMatrix = mat4.create();
-const projection = mat4.create();
-const view = mat4.create();
-const target = vec3.fromValues(0, 0, 0);
-const front = vec3.fromValues(0, 0, -1);
-const right = vec3.fromValues(1, 0, 0);
-const up = vec3.fromValues(0, 1, 0);
-const up2 = vec3.fromValues(0, 1, 0);
-const sensitivity = 0.1;
-let yaw = -90;
-let pitch = 0;
+  constructor(canvas: HTMLCanvasElement) {
+    const devicePixelRatio = window.devicePixelRatio;
+    const width = canvas.clientWidth * devicePixelRatio;
+    const height = canvas.clientHeight * devicePixelRatio;
 
-const updateKey = (e: KeyboardEvent, value: boolean): void => {
-  switch (e.code) {
-    case 'KeyW':
-      moving.forward = value;
-      e.preventDefault();
-      e.stopPropagation();
-      break;
-    case 'KeyS':
-      moving.backward = value;
-      e.preventDefault();
-      e.stopPropagation();
-      break;
-    case 'KeyA':
-      moving.left = value;
-      e.preventDefault();
-      e.stopPropagation();
-      break;
-    case 'KeyD':
-      moving.right = value;
-      e.preventDefault();
-      e.stopPropagation();
-      break;
-    default:
-      break;
+    canvas.width = width;
+    canvas.height = height;
+
+    this.aspectRatio = width / height;
+
+    mat4.perspective(
+      Math.PI / 4,
+      this.aspectRatio,
+      1,
+      1000,
+      this.projection,
+    );
+
+    this.handleLockChange = this.handleLockChange.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleKeyUp = this.handleKeyUp.bind(this);
+    this.updateKey = this.updateKey.bind(this);
+
+    canvas.addEventListener("click", async () => {
+      if(!document.pointerLockElement) {
+        // @ts-ignore
+        await canvas.requestPointerLock({
+          unadjustedMovement: true,
+        });
+      }
+    });
+
+    document.addEventListener("pointerlockchange", this.handleLockChange, false);
   }
-}
 
-const handleKeyDown = (e: KeyboardEvent): void => {
-  updateKey(e, true);
-}
-
-const handleKeyUp = (e: KeyboardEvent): void => {
-  updateKey(e, false);
-}
-
-const handleMouseMove = (e: MouseEvent): void => {
-  yaw += e.movementX * sensitivity;
-  pitch -= e.movementY * sensitivity;
-
-  if (pitch > 89.0) {
-    pitch = 89.0;
-  }
-  else if (pitch < -89.0) {
-    pitch = -89.0;
-  }
-}
-
-const handleLockChange = (): void => {
-  if (document.pointerLockElement) {
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-  } else {
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('keydown', handleKeyDown);
-    document.removeEventListener('keyup', handleKeyUp);
-  }
-}
-
-const init = (canvas: HTMLCanvasElement): void => {
-  const devicePixelRatio = window.devicePixelRatio;
-  const width = canvas.clientWidth * devicePixelRatio;
-  const height = canvas.clientHeight * devicePixelRatio;
-
-  canvas.width = width;
-  canvas.height = height;
-
-  aspectRatio = width / height;
-  console.log(width, height, aspectRatio);
-
-  mat4.perspective(
-    Math.PI / 4,
-    aspectRatio,
-    1,
-    1000,
-    projection,
-  );
-
-  canvas.addEventListener("click", async () => {
-    if(!document.pointerLockElement) {
-      // @ts-ignore
-      await canvas.requestPointerLock({
-        unadjustedMovement: true,
-      });
+  handleLockChange(): void {
+    if (document.pointerLockElement) {
+      document.addEventListener('mousemove', this.handleMouseMove);
+      document.addEventListener('keydown', this.handleKeyDown);
+      document.addEventListener('keyup', this.handleKeyUp);
+    } else {
+      document.removeEventListener('mousemove', this.handleMouseMove);
+      document.removeEventListener('keydown', this.handleKeyDown);
+      document.removeEventListener('keyup', this.handleKeyUp);
     }
-  });
-
-  document.addEventListener("pointerlockchange", handleLockChange, false);
-}
-
-const updateMovement = (delta: DOMHighResTimeStamp): void => {
-  if (moving.right) {
-    vec3.mulScalar(vec3.normalize(vec3.cross(front, up, velocity), velocity), speed * delta, velocity);
-  }
-  if (moving.left) {
-    vec3.mulScalar(vec3.normalize(vec3.cross(front, up, velocity), velocity), -speed * delta, velocity);
-  }
-  if (moving.forward) {
-    vec3.mulScalar(front, speed * delta, velocity);
-  }
-  if (moving.backward) {
-    vec3.mulScalar(front, -speed * delta, velocity);
   }
 
-  front[0] = Math.cos(utils.degToRad(yaw)) * Math.cos(utils.degToRad(pitch));
-  front[1] = Math.sin(utils.degToRad(pitch));
-  front[2] = Math.sin(utils.degToRad(yaw)) * Math.cos(utils.degToRad(pitch));
-  vec3.normalize(front, front);
+  updateKey(e: KeyboardEvent, value: boolean): void {
+    switch (e.code) {
+      case 'KeyW':
+        this.moving.forward = value;
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      case 'KeyS':
+        this.moving.backward = value;
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      case 'KeyA':
+        this.moving.left = value;
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      case 'KeyD':
+        this.moving.right = value;
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      default:
+        break;
+    }
+  }
 
-  vec3.cross(front, up, right);
-  vec3.normalize(right, right);
+  handleKeyDown(e: KeyboardEvent): void {
+    this.updateKey(e, true);
+  }
 
-  vec3.cross(right, front, up2);
-  vec3.normalize(up2, up2);
+  handleKeyUp(e: KeyboardEvent): void {
+    this.updateKey(e, false);
+  }
 
-  position.x += velocity[0];
-  position.y += velocity[1];
-  position.z += velocity[2];
+  handleMouseMove(e: MouseEvent): void {
+    this.yaw += e.movementX * this.sensitivity;
+    this.pitch -= e.movementY * this.sensitivity;
 
-  velocity[0] *= 0.93;
-  velocity[1] *= 0.93;
-  velocity[2] *= 0.93;
+    if (this.pitch > 89.0) {
+      this.pitch = 89.0;
+    }
+    else if (this.pitch < -89.0) {
+      this.pitch = -89.0;
+    }
+  }
 
-  const cameraPosition = vec3.fromValues(position.x, position.y, position.z);
-  vec3.add(cameraPosition, front, target);
+  updateMovement(delta: DOMHighResTimeStamp): void {
+    if (this.moving.right) {
+      vec3.normalize(vec3.cross(this.front, this.up, this.velocity), this.velocity);
+      vec3.mulScalar(this.velocity, this.speed * delta, this.velocity);
+    }
+    if (this.moving.left) {
+      vec3.normalize(vec3.cross(this.front, this.up, this.velocity), this.velocity);
+      vec3.mulScalar(this.velocity, -this.speed * delta, this.velocity);
+    }
+    if (this.moving.forward) {
+      vec3.mulScalar(this.front, this.speed * delta, this.velocity);
+    }
+    if (this.moving.backward) {
+      vec3.mulScalar(this.front, -this.speed * delta, this.velocity);
+    }
 
-  mat4.lookAt(cameraPosition, target, up, view);
-  mat4.multiply(projection, view, modelViewProjectionMatrix);
+    this.front[0] = Math.cos(utils.degToRad(this.yaw)) * Math.cos(utils.degToRad(this.pitch));
+    this.front[1] = Math.sin(utils.degToRad(this.pitch));
+    this.front[2] = Math.sin(utils.degToRad(this.yaw)) * Math.cos(utils.degToRad(this.pitch));
+    vec3.normalize(this.front, this.front);
+
+    this.position.x += this.velocity[0];
+    this.position.y += this.velocity[1];
+    this.position.z += this.velocity[2];
+
+    this.velocity[0] *= 0.93;
+    this.velocity[1] *= 0.93;
+    this.velocity[2] *= 0.93;
+
+    const cameraPosition = vec3.fromValues(this.position.x, this.position.y, this.position.z);
+    vec3.add(cameraPosition, this.front, this.target);
+
+    mat4.lookAt(cameraPosition, this.target, this.up, this.view);
+    mat4.multiply(this.projection, this.view, this.modelViewProjectionMatrix);
+  }
+
+  update(delta: DOMHighResTimeStamp): void {
+    this.updateMovement(delta);
+  }
+
+  getTransformationMatrix(): Float32Array {
+    return this.modelViewProjectionMatrix as Float32Array;
+  }
+
+  getCubemapMatrix(): Float32Array {
+    mat4.copy(this.view, this.cubemapMatrix);
+    this.cubemapMatrix[12] = 0;
+    this.cubemapMatrix[13] = 0;
+    this.cubemapMatrix[14] = 0;
+    mat4.multiply(this.projection, this.cubemapMatrix, this.cubemapMatrix);
+    mat4.inverse(this.cubemapMatrix, this.cubemapMatrix);
+
+    return this.cubemapMatrix as Float32Array;
+  }
 }
 
-const update = (delta: DOMHighResTimeStamp): void => {
-  updateMovement(delta);
-}
-
-const getTransformationMatrix = (): Float32Array => {
-  return modelViewProjectionMatrix as Float32Array;
-}
-
-const getCubemapMatrix = (): Float32Array => {
-  mat4.copy(view, cubemapMatrix);
-  cubemapMatrix[12] = 0;
-  cubemapMatrix[13] = 0;
-  cubemapMatrix[14] = 0;
-  mat4.multiply(projection, cubemapMatrix, cubemapMatrix);
-  mat4.inverse(cubemapMatrix, cubemapMatrix);
-
-  return cubemapMatrix as Float32Array;
-}
-
-export default {
-  init,
-  update,
-  getTransformationMatrix,
-  getCubemapMatrix,
-  position,
-  up: up,
-  front,
-  right,
-  aspectRatio,
-};
+export default Camera;

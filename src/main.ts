@@ -1,5 +1,5 @@
 import renderer from './renderer';
-import camera from './camera';
+import Camera from './camera';
 import mesh from './mesh'
 import './style.css';
 
@@ -18,7 +18,7 @@ const run = async () => {
     return;
   }
 
-  camera.init(canvas);
+  const camera = new Camera(canvas);
   await renderer.init(canvas);
 
   let lastTime: DOMHighResTimeStamp | null = null;

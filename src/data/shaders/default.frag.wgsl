@@ -19,16 +19,17 @@ fn main(
   // let light_dir = normalize(light_position - fs_position);
 
   // Directional light
-  let light_dir = normalize(vec3f(-1, -1.0, 0));
+  let light_dir = normalize(vec3f(-1.5, -1.5, 0.0));
+  let light_color = uniforms.light_color;
 
-  var light_color = uniforms.light_color;
-
+  var ambient_color = vec3f(0.569,0.412,0.827);
   var ambient_strength = 0.2;
-  var ambient = light_color * ambient_strength;
+  var ambient = ambient_color * ambient_strength;
 
   let normal = normalize(fs_normal);
 
-  let diffuse = light_color * max(dot(normal, light_dir), 0.0);
+  var diffuse_color = vec3f(0.996,0.686,0.549);
+  let diffuse = diffuse_color * max(dot(normal, light_dir), 0.0);
   let texture_value = textureSample(texture, m_sampler, fs_uv);
   /* let color_value = vec4(1.0,1.0,1.0,1.0); */
 

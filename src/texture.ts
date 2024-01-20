@@ -1,4 +1,4 @@
-import type { Vector3, Size } from './types';
+import type { Size } from './types';
 
 export const createTexture = async (device: GPUDevice, path: string): Promise<GPUTexture> => {
   const res = await fetch(path);

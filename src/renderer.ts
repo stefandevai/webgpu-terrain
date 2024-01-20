@@ -1,5 +1,4 @@
 import { vec3 } from 'wgpu-matrix';
-import type { Mat4 } from 'wgpu-matrix';
 import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
 import type { StructuredView } from 'webgpu-utils';
 import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
@@ -8,6 +7,7 @@ import vertexShaderSourceCubemap from './data/shaders/cubemap.vert.wgsl?raw';
 import fragmentShaderSourceCubemap from './data/shaders/cubemap.frag.wgsl?raw';
 import { createTexture, createDepthTexture, createCubemapTexture } from './texture';
 import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
+import Camera from './camera';
 import type { Mesh, MeshData } from './mesh';
 
 enum PipelineType {
@@ -18,7 +18,7 @@ enum PipelineType {
 interface RenderData {
   renderPassDescriptor: GPURenderPassDescriptor;
   pipelines: {
-    [key: PipelineType]: {
+    [key in PipelineType]: {
       uniformBuffer: GPUBuffer;
       uniformBindGroup: GPUBindGroup;
       uniformValues: StructuredView;
@@ -37,7 +37,8 @@ const positionOffset = 0;
 const normalOffset = 4 * 3;
 const uvOffset = 4 * 6;
 
-const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
+// const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
+const lightColor = vec3.fromValues(0.976,0.973,0.784);
 const lightPosition = vec3.fromValues(-5.0, -10.0, 15.0);
 
 const init = async (canvas: HTMLCanvasElement): Promise<void> => {
@@ -283,7 +284,7 @@ const pushMesh = (mesh: Mesh): void => {
   });
 }
 
-const render = (camera: any): void => {
+const render = (camera: Camera): void => {
   if (!device || !context || !renderData) {
     return;
   }
