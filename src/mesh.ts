@@ -1,26 +1,7 @@
 import FastNoiseLite from 'fastnoise-lite';
 import { vec3 } from 'wgpu-matrix';
 import type { Vec3 } from 'wgpu-matrix';
-import type { Vector3, Size } from './types';
-
-export type Mesh = {
-  vertexData: Float32Array;
-  indexData: Uint32Array;
-  vertexCount: number;
-  indexCount: number;
-};
-
-export type MeshData = {
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
-  count: number;
-};
-
-type HeightMap = {
-  array: Float32Array;
-  size: Size;
-  yScale: number;
-}
+import type { Mesh, HeightMap, Vector3, Size } from './types';
 
 const generateHeightMap = (size: Size): HeightMap => {
   const heightMapSize = {
@@ -120,7 +101,7 @@ const getQuadIndices = (offset: number): number[] => {
   ];
 }
 
-const create = (): Mesh => {
+const createNoise = (): Mesh => {
   const size: Size = {
     w: 256,
     h: 256,
@@ -166,5 +147,5 @@ const create = (): Mesh => {
 }
 
 export default {
-  create,
+  createNoise,
 }

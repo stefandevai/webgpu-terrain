@@ -1,14 +1,10 @@
 import { vec3 } from 'wgpu-matrix';
-import { makeShaderDataDefinitions, makeStructuredView } from 'webgpu-utils';
-import type { StructuredView } from 'webgpu-utils';
-import vertexShaderSource from './data/shaders/default.vert.wgsl?raw';
-import fragmentShaderSource from './data/shaders/default.frag.wgsl?raw';
-import vertexShaderSourceCubemap from './data/shaders/cubemap.vert.wgsl?raw';
-import fragmentShaderSourceCubemap from './data/shaders/cubemap.frag.wgsl?raw';
-import { createTexture, createDepthTexture, createCubemapTexture } from './texture';
-import { createVertexBuffer, createIndexBuffer, createUniformBuffer } from './buffer';
+import { getTerrainPipelineData } from './pipelines/terrain';
+import { getCubemapPipelineData } from './pipelines/cubemap';
+import { createDepthTexture } from './texture';
+import { createVertexBuffer, createIndexBuffer } from './buffer';
 import Camera from './camera';
-import type { Mesh, MeshData } from './mesh';
+import type { Mesh, PipelineData } from './types';
 
 enum PipelineType {
   Terrain = 'terrain',
@@ -18,24 +14,13 @@ enum PipelineType {
 interface RenderData {
   renderPassDescriptor: GPURenderPassDescriptor;
   pipelines: {
-    [key in PipelineType]: {
-      uniformBuffer: GPUBuffer;
-      uniformBindGroup: GPUBindGroup;
-      uniformValues: StructuredView;
-      pipeline: GPURenderPipeline;
-      meshData: MeshData[];
-    }
+    [key in PipelineType]: PipelineData;
   };
 };
 
 let renderData: RenderData | null = null;
 let context: GPUCanvasContext | null = null;
 let device: GPUDevice | null = null;
-
-const vertexSize = 8 * 4;
-const positionOffset = 0;
-const normalOffset = 4 * 3;
-const uvOffset = 4 * 6;
 
 // const lightColor = vec3.fromValues(1.0, 1.0, 1.0);
 const lightColor = vec3.fromValues(0.976,0.973,0.784);
@@ -68,167 +53,11 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
     alphaMode: 'premultiplied',
   });
 
-  // Cubemap pipeline
-  const pipelineCubemap = device.createRenderPipeline({
-    layout: 'auto',
-    vertex: {
-      module: device.createShaderModule({
-        code: vertexShaderSourceCubemap,
-      }),
-      entryPoint: 'main',
-    },
-    fragment: {
-      module: device.createShaderModule({
-        code: fragmentShaderSourceCubemap,
-      }),
-      entryPoint: 'main',
-      targets: [{
-        format: presentationFormat,
-      }],
-    },
-    primitive: {
-      topology: 'triangle-list',
-    },
-    depthStencil: {
-      depthWriteEnabled: true,
-      depthCompare: 'less-equal',
-      format: 'depth24plus',
-    },
-  });
+  const pipelineDataTerrain = await getTerrainPipelineData(device, presentationFormat);
 
-  const cubemapTexture = await createCubemapTexture(device, [
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/px.jpg`,
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/nx.jpg`,
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/py.jpg`,
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/ny.jpg`,
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/pz.jpg`,
-    `${import.meta.env.BASE_URL}assets/textures/cubemap2/nz.jpg`,
-  ]);
-
-  const samplerCubemap = device.createSampler({
-    addressModeU: 'repeat',
-    addressModeV: 'repeat',
-    magFilter: 'linear',
-    minFilter: 'nearest',
-    mipmapFilter: 'nearest',
-    maxAnisotropy: 1,
-  });
-
-  const uniformDefinitionsCubemap = makeShaderDataDefinitions(vertexShaderSourceCubemap + fragmentShaderSourceCubemap);
-
-  const uniformValuesCubemap = makeStructuredView(uniformDefinitionsCubemap.uniforms.uniforms);
-
-  const uniformBufferCubemap = createUniformBuffer(device, uniformValuesCubemap.arrayBuffer.byteLength);
-
-  const uniformBindGroupCubemap = device.createBindGroup({
-    layout: pipelineCubemap.getBindGroupLayout(0),
-    entries: [
-      {
-        binding: 0,
-        resource: {
-          buffer: uniformBufferCubemap,
-        },
-      },
-      {
-        binding: 1,
-        resource: samplerCubemap,
-      },
-      {
-        binding: 2,
-        resource: cubemapTexture.createView({
-          dimension: 'cube',
-        }),
-      },
-    ],
-  });
-
-  // Terrain pipeline
-  const pipeline = device.createRenderPipeline({
-    layout: 'auto',
-    vertex: {
-      module: device.createShaderModule({
-        code: vertexShaderSource,
-      }),
-      entryPoint: 'main',
-      buffers: [
-        {
-          arrayStride: vertexSize,
-          attributes: [
-            {
-              shaderLocation: 0,
-              offset: positionOffset,
-              format: 'float32x3',
-            },
-            {
-              shaderLocation: 1,
-              offset: normalOffset,
-              format: 'float32x3',
-            },
-            {
-              shaderLocation: 2,
-              offset: uvOffset,
-              format: 'float32x2',
-            },
-          ],
-        },
-      ],
-    },
-    fragment: {
-      module: device.createShaderModule({
-        code: fragmentShaderSource,
-      }),
-      entryPoint: 'main',
-      targets: [
-        {
-          format: presentationFormat,
-        },
-      ]
-    },
-    primitive: {
-      topology: 'triangle-list',
-      cullMode: 'back',
-    },
-    depthStencil: {
-      depthWriteEnabled: true,
-      depthCompare: 'less-equal',
-      format: 'depth24plus',
-    },
-  });
+  const pipelineDataCubemap = await getCubemapPipelineData(device, presentationFormat);
 
   const depthTexture = createDepthTexture(device, { w: canvas.width, h: canvas.height });
-
-  const cubeTexture = await createTexture(device, `${import.meta.env.BASE_URL}assets/textures/stone.png`);
-
-  const sampler = device.createSampler({
-    magFilter: 'linear',
-    minFilter: 'nearest',
-  });
-
-  const uniformDefinitions = makeShaderDataDefinitions(vertexShaderSource + fragmentShaderSource);
-
-  const uniformValues = makeStructuredView(uniformDefinitions.uniforms.uniforms);
-
-  const uniformBuffer = createUniformBuffer(device, uniformValues.arrayBuffer.byteLength);
-
-  const uniformBindGroup = device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(0),
-    entries: [
-      {
-        binding: 0,
-        resource: {
-          buffer: uniformBuffer,
-        },
-      },
-      {
-        binding: 1,
-        resource: sampler,
-      },
-      {
-        binding: 2,
-        resource: cubeTexture.createView(),
-      },
-    ],
-  });
 
   const renderPassDescriptor: GPURenderPassDescriptor = {
     // @ts-ignore
@@ -251,20 +80,8 @@ const init = async (canvas: HTMLCanvasElement): Promise<void> => {
   renderData = {
     renderPassDescriptor,
     pipelines: {
-      [PipelineType.Cubemap]: {
-        uniformBuffer: uniformBufferCubemap,
-        uniformBindGroup: uniformBindGroupCubemap,
-        uniformValues: uniformValuesCubemap,
-        pipeline: pipelineCubemap,
-        meshData: [],
-      },
-      [PipelineType.Terrain]: {
-        uniformBuffer,
-        uniformBindGroup,
-        uniformValues,
-        pipeline,
-        meshData: [],
-      }
+      [PipelineType.Cubemap]: pipelineDataCubemap,
+      [PipelineType.Terrain]: pipelineDataTerrain,
     }
   };
 }

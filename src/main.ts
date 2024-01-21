@@ -23,7 +23,7 @@ const run = async () => {
 
   let lastTime: DOMHighResTimeStamp | null = null;
 
-  const meshObject = mesh.create();
+  const meshObject = mesh.createNoise();
   renderer.pushMesh(meshObject);
 
   const frame = (currentTime?: DOMHighResTimeStamp) => {
